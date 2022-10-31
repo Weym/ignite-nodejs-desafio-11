@@ -1,11 +1,12 @@
 import type { AWS } from '@serverless/typescript';
 
-import hello from '@functions/hello';
+import createTODO from '@functions/createTODO';
+import listTODOS from '@functions/listTODOS';
 
 const serverlessConfiguration: AWS = {
   service: 'todos',
   frameworkVersion: '3',
-  plugins: ['serverless-esbuild'],
+  plugins: ['serverless-esbuild', 'serverless-dynamodb-local', 'serverless-offline'],
   provider: {
     name: 'aws',
     runtime: 'nodejs14.x',
@@ -19,7 +20,7 @@ const serverlessConfiguration: AWS = {
     },
   },
   // import the function via paths
-  functions: { hello },
+  functions: { createTODO, listTODOS },
   package: { individually: true },
   custom: {
     esbuild: {
@@ -32,7 +33,41 @@ const serverlessConfiguration: AWS = {
       platform: 'node',
       concurrency: 10,
     },
+    dynamodb: {
+      stages: ["dev", "local"],
+      start: {
+        port: 8000,
+        inMemory: true,
+        migrate: true
+      }
+    }
   },
+  resources: {
+    Resources: {
+      dbTodos: {
+        Type: "AWS::DynamoDB::Table",
+        Properties: {
+          TableName: "todos",
+          ProvisionedThroughput: {
+            ReadCapacityUnits: 5,
+            WriteCapacityUnits: 5
+          },
+          AttributeDefinitions: [
+            {
+              AttributeName: "id",
+              AttributeType: "S"
+            }
+          ],
+          KeySchema: [
+            {
+              AttributeName: "id",
+              KeyType: "HASH"
+            }
+          ]
+        }
+      }
+    }
+  }
 };
 
 module.exports = serverlessConfiguration;
